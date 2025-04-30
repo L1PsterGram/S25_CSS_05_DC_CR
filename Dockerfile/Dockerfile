@@ -66,10 +66,12 @@ RUN apt-get update && \
 
 # Copy your entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY menu.sh /home/$UNAME/menu.sh
 
 # Convert to Unix format and make it executable
 RUN dos2unix /usr/local/bin/entrypoint.sh && \
-    chmod +x /usr/local/bin/entrypoint.sh
+    chmod +x /usr/local/bin/entrypoint.sh && \
+    chmod +x /home/$UNAME/menu.sh
 
 # ============================================
 # Switch to Non-root User
