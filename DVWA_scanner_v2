@@ -1,0 +1,125 @@
+import requests
+import re
+from urllib.parse import urljoin
+
+# Target URL for DVWA, ensuring it ends with a '/'
+TARGET_URL = input("Enter the DVWA URL (e.g., http://localhost/): ").rstrip("/") + "/"
+# Default login credentials for DVWA
+USERNAME = "admin"
+PASSWORD = "password"
+
+# Using a session to persist cookies across requests (for login)
+session = requests.Session()
+# Setting a custom User-Agent header
+headers = {
+    "User-Agent": "Mozilla/5.0 (compatible; DVWA-Scanner/1.0)"
+}
+
+def check_dvwa_status(url):
+    """Checks if the DVWA URL is reachable."""
+    try:
+        response = session.get(url, headers=headers)
+        if response.status_code == 200:
+            print(f"[+] DVWA is reachable (Status Code: {response.status_code})")
+            return True, response.text
+        else:
+            print(f"[-] DVWA is not reachable (Status Code: {response.status_code})")
+            return False, None
+    except requests.exceptions.ConnectionError:
+        print(f"[-] Could not connect to {url}. Ensure DVWA is running.")
+        return False, None
+
+def login_dvwa(url):
+    """Logs into the DVWA application."""
+    try:
+        response = session.get(url, headers=headers)
+        if response.status_code == 200:
+            token_match = re.search(r"name='user_token'\s+value='(.*?)'", response.text)
+            if not token_match:
+                print("[-] CSRF token not found on login page.")
+                return None
+            user_token = token_match.group(1)
+            login_data = {
+                "username": USERNAME,
+                "password": PASSWORD,
+                "Login": "Login",
+                "user_token": user_token
+            }
+            # Try submitting to the same URL or a common 'login.php'
+            login_post_url = urljoin(url, "login.php") if "login" not in response.url else response.url
+            login_response = session.post(login_post_url, data=login_data, headers=headers, allow_redirects=True)
+            if "Logout" in login_response.text:
+                print("[+] Successfully logged into DVWA.")
+                return session.cookies
+            else:
+                print("[-] Login failed.")
+                return None
+        else:
+            print(f"[-] Could not access DVWA index page (Status Code: {response.status_code}).")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"[-] Error during login: {e}")
+        return None
+
+def detect_security_level(html_content):
+    """Detects the DVWA security level from the HTML content."""
+    if html_content:
+        lowered = html_content.lower()
+        if "dvwa security: low" in lowered:
+            return "Low"
+        elif "dvwa security: medium" in lowered:
+            return "Medium"
+        elif "dvwa security: high" in lowered:
+            return "High"
+        elif "dvwa security: impossible" in lowered:
+            return "Impossible"
+    return "Could not determine"
+
+def test_reflected_xss(url, cookies):
+    """Tests for Reflected XSS vulnerability on the specified URL."""
+    payload = "<script>alert('Simple Script!');</script>"
+    encoded_payload_url = requests.utils.quote(payload)
+    xss_url = f"{url}vulnerabilities/xss_r/?name={encoded_payload_url}"
+    print(f"[DEBUG] Trying XSS URL: {xss_url}")
+
+    try:
+        response = session.get(xss_url, headers=headers, cookies=cookies)
+        print("[DEBUG] Response Status Code:", response.status_code)
+        print("[DEBUG] Beginning of Response Content:")
+        print(response.text[:300])
+
+        if "alert('Simple Script!')" in response.text:
+            print("[+] Reflected XSS vulnerability found (simple script tag)!")
+            return "Vulnerable"
+        else:
+            print("[-] Reflected XSS not detected (simple script tag failed).")
+            return "Not Vulnerable"
+    except requests.exceptions.RequestException as e:
+        print(f"[-] Error during XSS test: {e}")
+        return "Error"
+def generate_report(target, status, security_level, xss_result):
+    """Generates a simple scan report."""
+    print("\n=== DVWA Vulnerability Scan Report ===")
+    print(f"Target: {target}")
+    print(f"Status: {status}")
+    print(f"Security Level: {security_level}")
+    print(f"Reflected XSS Test: {xss_result}")
+    print("======================================")
+
+if __name__ == "__main__":
+    # Ensure the target URL ends with a '/'
+    reachable, html = check_dvwa_status(TARGET_URL)
+    if reachable:
+        # Attempt to log in and get session cookies
+        cookies = login_dvwa(TARGET_URL)
+        if cookies:
+            # Detect the security level of DVWA
+            security = detect_security_level(html) if html else "N/A"
+            # Test for Reflected XSS
+            xss = test_reflected_xss(TARGET_URL, cookies)
+            # Generate the final report
+            generate_report(TARGET_URL, "Reachable", security, xss)
+        else:
+            generate_report(TARGET_URL, "Reachable", "N/A", "Login Failed")
+    else:
+        generate_report(TARGET_URL, "Unreachable", "N/A", "N/A")
