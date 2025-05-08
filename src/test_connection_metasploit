@@ -1,0 +1,11 @@
+from pymetasploit3.msfrpc import MsfRpcClient
+
+try:
+    client = MsfRpcClient('testpassword', server='127.0.0.1', port=55552, ssl=True)
+    print("Successfully connected to Metasploit RPC (SSL)! ")
+    client.logout()
+except Exception as e:
+    print(f"Error connecting to Metasploit RPC (SSL): {e}")
+
+##testing for metasploit framework 
+##It only responds to pymetasploit this is using Parrots

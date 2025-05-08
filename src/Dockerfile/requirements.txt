@@ -1,0 +1,2 @@
+prompt_toolkit
+# Add any other python libraries your TUI or main application might need later
