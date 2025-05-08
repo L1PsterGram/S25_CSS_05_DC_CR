@@ -6,6 +6,8 @@ import sys
 import datetime # For debug logging
 from prompt_toolkit import Application
 from prompt_toolkit.key_binding import KeyBindings
+# Import Dimension object 'D' - Although not strictly needed after removing Window wrappers unless we apply width directly to Frames/HSplits
+from prompt_toolkit.layout.dimension import D 
 from prompt_toolkit.layout.containers import HSplit, Window, VSplit
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.layout import Layout
@@ -15,21 +17,25 @@ from prompt_toolkit.formatted_text import HTML
 
 # --- Configuration & Globals ---
 SHELL_FUNCTIONS_SCRIPT = "/usr/local/bin/shell_functions.sh"
-DEBUG_LOG_FILE = "/tmp/tui_debug.log" # Make sure /tmp is writable by the user
+DEBUG_LOG_FILE = "/tmp/tui_debug.log" 
 
 # --- Style for the TUI ---
 tui_style = Style.from_dict({
     'dialog':             'bg:#333333 #dddddd',
     'dialog.body':        'bg:#2a2a2a #cccccc',
+    'frame':              'bg:#333333', 
     'frame.label':        '#FFD700 bold',
     'button':             'bg:#444444 #ffffff',
-    'button.focused':     'bg:#FF8C00 #000000',
+    # This style is applied when the button has focus (e.g., navigating with arrow keys)
+    'button.focused':     'bg:#FF8C00 #000000', 
     'label':              '#eeeeee',
     'text-area':          'bg:#1e1e1e #e0e0e0',
     'text-area.focused':  'bg:#101010',
     'title':              '#FFD700 bold',
     'credits':            'italic #aaaaaa',
     'logo':               '#00aaFF',
+    'vsplit-line':        'bg:#333333 #888888', 
+    'action-confirm':     'fg:#00FF00 bold', # Style for the confirmation text
 })
 
 # --- Helper to Call Shell Functions ---
@@ -62,7 +68,7 @@ def call_shell_function(function_name, *args):
         return f"An unexpected error occurred while calling {function_name}: {str(e)}"
 
 # --- TUI Application State ---
-app_instance = None
+app_instance = None # Keep track of the current app instance
 output_text_area = TextArea(
     text="Welcome! Select an option from the menu.",
     read_only=True,
@@ -71,6 +77,8 @@ output_text_area = TextArea(
     line_numbers=False,
     wrap_lines=True
 )
+# We still need a reference to the button container to return focus
+buttons_layout = None 
 
 # --- Logo and Credits ---
 LOGO_TEXT = HTML(
@@ -90,94 +98,146 @@ CREDITS_TEXT = HTML(
     "  GitHub: https://github.com/users/L1PsterGram/projects/1</credits>"
 )
 
+
 # --- Action Handlers ---
-def update_output_area(title, content_function_name_or_direct_content, is_direct_content=False):
-    global output_text_area, app_instance 
+def update_output_area(action_title, content_function_name_or_direct_content, is_direct_content=False):
+    """Updates the output area, prepending the action taken."""
+    global output_text_area, app_instance, buttons_layout # Need access to buttons_layout
     content_to_display = ""
+    action_confirmation = f"--- Action Selected: {action_title} ---"
+    
     with open(DEBUG_LOG_FILE, "a") as f:
-        f.write(f"{datetime.datetime.now()}: update_output_area: title='{title}'\n")
+        f.write(f"{datetime.datetime.now()}: update_output_area: action='{action_title}'\n")
 
     if is_direct_content:
         content_to_display = content_function_name_or_direct_content
     else:
         content_to_display = call_shell_function(content_function_name_or_direct_content)
     
-    output_text_area.text = f"--- {title} ---\n\n{content_to_display}"
+    # Prepend the action confirmation to the actual content
+    output_text_area.text = f"{action_confirmation}\n\n{content_to_display}"
+    
     with open(DEBUG_LOG_FILE, "a") as f:
         f.write(f"{datetime.datetime.now()}: output_text_area.text updated.\n")
     
-    if app_instance and app_instance.layout: 
-       app_instance.layout.focus(output_text_area)
-       with open(DEBUG_LOG_FILE, "a") as f:
-           f.write(f"{datetime.datetime.now()}: output_text_area focused.\n")
+    # Return focus to the button container to keep navigation intuitive
+    if app_instance and app_instance.layout and buttons_layout: 
+       try:
+           app_instance.layout.focus(buttons_layout) 
+           with open(DEBUG_LOG_FILE, "a") as f:
+               f.write(f"{datetime.datetime.now()}: buttons_layout focused.\n")
+       except Exception as focus_error:
+            with open(DEBUG_LOG_FILE, "a") as f:
+               f.write(f"{datetime.datetime.now()}: Error focusing buttons_layout: {focus_error}\n")
 
-
-def action_welcome(): update_output_area("Full Welcome Message & Features", "display_welcome")
+# Define actions that call update_output_area with a descriptive title
+def action_welcome(): update_output_area("Welcome & Features", "display_welcome")
 def action_job_status(): update_output_area("Job Status", "display_job_status")
-def action_help(): update_output_area("Help / Usage Instructions", "display_help")
+def action_help(): update_output_area("Help / Usage", "display_help")
 def action_manual(): update_output_area("User Manual", "display_manual")
 def action_bash_shell():
     global app_instance
-    if app_instance: app_instance.exit(result="start_bash")
+    if app_instance: app_instance.exit(result="start_bash") # Signal intent to start bash
 def action_exit_container():
     global app_instance
-    if app_instance: app_instance.exit(result="exit_container")
+    if app_instance: app_instance.exit(result="exit_container") # Signal intent to exit fully
 
 # --- Menu Buttons & Layout ---
-buttons_layout = HSplit([
-    Button("1. Welcome & Features", handler=action_welcome),
+# Assign the HSplit to the global variable here
+buttons_layout = HSplit([ 
+    Button("1. Welcome & Features", handler=action_welcome), 
     Button("2. Job Status", handler=action_job_status),
     Button("3. Help / Usage", handler=action_help),
     Button("4. User Manual", handler=action_manual),
     Button("5. Start Bash Shell", handler=action_bash_shell),
     Button("0. Exit Container", handler=action_exit_container),
-], padding=0, style='class:dialog.body')
+], padding=0, width=72, style='class:dialog.body')
 
-root_container = HSplit([
+# Define the left panel (Logo, Credits, Menu)
+left_panel_content = HSplit([
     Frame(title="Pentesting Tools Hub", body=HSplit([
-        # MODIFIED: Changed height from 7 to 9 for the logo window
         Window(content=FormattedTextControl(text=LOGO_TEXT), height=9, style='class:dialog.body'),
-        Window(content=FormattedTextControl(text=CREDITS_TEXT), height=3, style='class:dialog.body'),
-    ]), style='class:dialog'),
-    Frame(title="Menu Options", body=buttons_layout, style='class:dialog'),
-    Frame(title="Output / Content (Scroll with Up/Down/PgUp/PgDn)", body=output_text_area, style='class:dialog'),
-], style='class:dialog')
+        Window(content=FormattedTextControl(text=CREDITS_TEXT), height=3, style='class:dialog.body'), 
+    ]), style='class:frame'), 
+    Frame(title="Menu Options", body=buttons_layout, style='class:frame') 
+])
+
+# Define the right panel (Output Area)
+right_panel_content = Frame(
+    title="Output / Content (Scroll with Up/Down/PgUp/PgDn, Tab to focus)", 
+    body=output_text_area,
+    style='class:frame'
+)
+
+# root_container uses VSplit directly with the panel contents
+root_container = VSplit([
+    left_panel_content, 
+    Window(width=1, char='│', style='class:vsplit-line'), 
+    right_panel_content,
+], padding=0, style='class:dialog') 
 
 # --- Key Bindings ---
 kb = KeyBindings()
 @kb.add('c-c', eager=True)
 @kb.add('c-q', eager=True)
-def _(event): event.app.exit(result="user_interrupt")
+def _(event): event.app.exit(result="user_interrupt") # Signal intent for interrupt exit
 
 # --- Main Application ---
 def main():
-    global app_instance
-    with open(DEBUG_LOG_FILE, "w") as f:
-        f.write(f"{datetime.datetime.now()}: TUI Application Started.\n")
-    os.system('clear')
+    global app_instance # Make sure we can modify the global instance
 
-    app_instance = Application(
-        layout=Layout(root_container),
-        key_bindings=kb,
-        full_screen=True,
-        style=tui_style,
-        mouse_support=True
-    )
-    exit_reason = app_instance.run()
-    
-    os.system('clear')
-    if exit_reason == "start_bash":
-        print("Starting bash shell...")
-        try: os.execvp("bash", ["bash"])
-        except FileNotFoundError:
-            print("Error: bash command not found.", file=sys.stderr)
-            sys.exit(1)
-    elif exit_reason == "exit_container": print("Exiting container.")
-    elif exit_reason == "user_interrupt": print("Exited by user (Ctrl+C or Ctrl+Q).")
-    else: print(f"Exiting TUI (Reason: {exit_reason}).")
+    # Outer loop to allow relaunching the TUI after bash exits
+    while True: 
+        # Clear debug log for this run
+        with open(DEBUG_LOG_FILE, "w") as f:
+            f.write(f"{datetime.datetime.now()}: TUI Application Starting/Restarting.\n")
+        
+        # Clear screen before starting TUI (optional, but can be cleaner)
+        # os.system('clear') # Can cause flicker, might remove
+
+        # Initialize the Application for this run
+        app_instance = Application(
+            layout=Layout(root_container),
+            key_bindings=kb,
+            full_screen=True,
+            style=tui_style,
+            mouse_support=True
+        )
+        
+        # Run the TUI event loop. This blocks until app.exit() is called.
+        exit_reason = app_instance.run()
+        
+        # Post-TUI actions based on the exit reason
+        os.system('clear') # Clear the TUI screen after it exits
+
+        if exit_reason == "start_bash":
+            print("Starting bash shell... Type 'exit' to return to TUI.")
+            # Run bash interactively. The script waits here until bash exits.
+            return_code = os.system('bash') 
+            with open(DEBUG_LOG_FILE, "a") as f:
+                f.write(f"{datetime.datetime.now()}: Bash shell exited with code {return_code}.\n")
+            os.system('clear') # Clear bash output before restarting TUI
+            continue # Go back to the start of the while loop to relaunch TUI
+
+        elif exit_reason == "exit_container":
+            print("Exiting container.")
+            break # Exit the while loop
+
+        elif exit_reason == "user_interrupt":
+            print("Exited by user (Ctrl+C or Ctrl+Q).")
+            break # Exit the while loop
+        
+        else:
+            # Handle any other unexpected exit reasons
+            print(f"Exiting TUI (Reason: {exit_reason}).")
+            break # Exit the while loop
+
+    # Script finishes after the loop breaks
     sys.exit(0)
 
+
 if __name__ == "__main__":
+    # Initial check for the shell functions script
     if not (os.path.isfile(SHELL_FUNCTIONS_SCRIPT) and os.access(SHELL_FUNCTIONS_SCRIPT, os.X_OK)):
         print(f"Critical Error: '{SHELL_FUNCTIONS_SCRIPT}' not found or not executable.", file=sys.stderr)
         sys.exit(1)

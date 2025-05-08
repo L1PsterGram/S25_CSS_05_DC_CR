@@ -1,87 +1,146 @@
 #!/bin/bash
 
 # --- Function Definitions ---
-# (Ensure all your functions like display_welcome, display_job_status, etc., are here)
 
 display_welcome() {
-    # Your existing display_welcome function content
-    # For example:
-    echo "  Welcome to the Pentesting Tools Container!"
-    echo "  Developed by: Daniel Critchlow Jr. & Carlos Rodriguez/Team 5"
-    echo "  GitHub: https://github.com/users/L1PsterGram/projects/1"
+# Define ASCII art as a multi-line string using a heredoc
+cat << 'EOF'
+   _ (`-.    ('-.       .-') _  .-') _     ('-.    .-')    .-') _    
+  ( (OO  ) _(  OO)     ( OO ) )(  OO) )  _(  OO)  ( OO ). (  OO) )   
+ _.`     \(,------.,--./ ,--,' /     '._(,------.(_)---\_)/     '._  
+(__...--'' |  .---'|   \ |  |\ |'--...__)|  .---'/    _ | |'--...__) 
+ |  /  | | |  |    |    \|  | )'--.  .--'|  |    \  :` `. '--.  .--' 
+ |  |_.' |(|  '--. |  .     |/    |  |  (|  '--.  '..`''.)   |  |    
+ |  .___.' |  .--' |  |\    |     |  |   |  .--' .-._)   \   |  |    
+ |  |      |  `---.|  | \   |     |  |   |  `---.\       /   |  |    
+ `--'      `------'`--'  `--'     `--'   `------' `-----'    `--'    
+EOF
     echo ""
-    echo "  This container provides a suite of pentesting tools."
-    echo "  Available tools include: Nmap, SQLMap, Nikto, Dirb, GoBuster, TShark, etc."
-    echo "  Use the menu to navigate or start a bash shell for direct command access."
-    echo "  Reports and logs are stored in: $SCAN_OUTPUT_DIR"
-    # Add more details about features as needed
+    echo "🎯 ─── Welcome to the Pentesting Tools Container ───"
+    echo ""
+    echo "🛠️  This container provides a suite of powerful pentesting tools."
+    echo ""
+    echo "🔧 Available tools include:"
+    echo "  • Nmap        — Network scanner"
+    echo "  • SQLMap      — SQL injection tester"
+    echo "  • Nikto       — Web server vulnerability scanner"
+    echo "  • Dirb        — Web content scanner"
+    echo "  • GoBuster    — Directory/file & DNS buster"
+    echo "  • TShark      — CLI packet analyzer"
+    echo ""
+    echo "📋 Use the menu to navigate options or start a Bash shell for direct tool usage."
+    echo ""
+    echo "📁 Reports and logs will be saved in:"
+    echo "  ${SCAN_OUTPUT_DIR:-/home/pentester/reports}"
+    echo ""
+    echo "🧠 Tip: Ensure your scans respect legal and ethical boundaries."
+    echo "────────────────────────────────────────────────────"
+    echo ""
 }
 
 display_job_status() {
-    # Your existing display_job_status function content
-    # For example:
-    echo "--- Current Job Status ---"
+    echo ""
+    echo "🔍 ─── Current Job Status ───"
+
     if pgrep -f "nmap" > /dev/null; then
-        echo "Nmap scan: Running"
+        echo "  • Nmap Scan        : ✅ Running"
     else
-        echo "Nmap scan: Not running"
+        echo "  • Nmap Scan        : ❌ Not running"
     fi
+
     if pgrep -f "sqlmap" > /dev/null; then
-        echo "SQLMap: Running"
+        echo "  • SQLMap           : ✅ Running"
     else
-        echo "SQLMap: Not running"
+        echo "  • SQLMap           : ❌ Not running"
     fi
-    # Add checks for other tools or cron jobs
-    echo "Cron jobs scheduled:"
-    crontab -l 2>/dev/null || echo "No cron jobs for $USER"
-    echo "-------------------------"
+
+    # Extend this section for other tools like Nikto, Dirb, etc.
+
+    echo ""
+    echo "🕒 ─── Cron Jobs Scheduled ───"
+    if command -v crontab > /dev/null; then
+        crontab -l 2>/dev/null || echo "  • No cron jobs for user: $USER"
+    else
+        echo "  • crontab command not found."
+    fi
+    echo "──────────────────────────────"
+    echo ""
 }
 
 display_help() {
-    # Your existing display_help function content
-    # For example:
-    echo "--- Help / Usage Instructions ---"
+    echo ""
+    echo "📘 ─── Help / Usage Instructions ───"
+    echo ""
     echo "This container provides a Terminal User Interface (TUI) for accessing pentesting tools."
-    echo "Use the number keys corresponding to the menu options and press Enter."
+    echo "Use ⬆️/⬇️ to navigate and ⏎ Enter to select options."
+    echo "Use Ctrl+C or Ctrl+Q anytime to exit the TUI."
     echo ""
-    echo "Menu Options:"
-    echo "  1. Display Full Welcome & Features: Shows this welcome message and tool overview."
-    echo "  2. Display Job Status: Shows status of known running tool processes or cron jobs."
-    echo "  3. Display Help / Usage: Shows this help message."
-    echo "  4. Display User Manual: Provides a more detailed guide (if available)."
-    echo "  5. Start Bash Shell: Exits the TUI and gives you a direct bash shell within the container."
-    echo "     Type 'exit' in the bash shell to terminate it. This will then exit the container."
-    echo "  0. Exit Container: Shuts down and exits the container."
+    echo "🧭 Menu Options:"
+    echo "  1️⃣  Display Full Welcome & Features"
+    echo "  2️⃣  Display Job Status (Running Tools, Cron Jobs)"
+    echo "  3️⃣  Display Help / Usage Instructions"
+    echo "  4️⃣  Display User Manual"
+    echo "  5️⃣  Start Bash Shell (type 'exit' to return)"
+    echo "  0️⃣  Exit Container"
     echo ""
-    echo "All scan outputs and logs are intended to be saved in '$SCAN_OUTPUT_DIR'."
-    echo "Ensure you have appropriate permissions and network configurations for the tools you use."
-    echo "-----------------------------"
+    echo "🧾 Output from actions appears in the 'Output / Content' panel."
+    echo "🔄 Use Tab to switch focus between panels."
+    echo ""
+    echo "📂 Scan output/logs directory:"
+    echo "  ${SCAN_OUTPUT_DIR:-/home/pentester/reports}"
+    echo ""
+    echo "✅ Ensure proper permissions & network access for all tools."
+    echo "──────────────────────────────────────"
+    echo ""
 }
+
 
 display_manual() {
-    # Your existing display_manual function content
-    # For example:
-    echo "--- User Manual ---"
-    echo "This is a placeholder for a more detailed user manual."
-    echo "Refer to the GitHub Wiki for comprehensive documentation on the project, tool usage,"
-    echo "and development process: [Link to your GitHub Wiki]"
     echo ""
-    echo "Key tools and basic usage hints:"
-    echo "  Nmap: For network discovery and security auditing. Example: nmap -sV <target>"
-    echo "  SQLMap: For detecting and exploiting SQL injection flaws. Example: sqlmap -u \"<target_url_with_param>\" --dbs"
-    echo "  Nikto: Web server scanner. Example: nikto -h <target_url_or_ip>"
-    echo "  Dirb: Web content scanner. Example: dirb <base_url>"
-    echo "  GoBuster: Directory/file and DNS busting. Example: gobuster dir -u <target_url> -w <wordlist_path>"
-    echo "  TShark: Command-line network protocol analyzer. Example: tshark -i eth0 -c 10"
+    echo "📖 ─── User Manual ───"
     echo ""
-    echo "Always use these tools responsibly and ethically."
-    echo "-------------------"
+    echo "This is a placeholder for the full manual. Please refer to:"
+    echo "📎 GitHub Wiki (Update this with actual link)"
+    echo ""
+    echo "🛠️ Common Tools & Examples:"
+    echo "  • Nmap      : nmap -sV <target>"
+    echo "  • SQLMap    : sqlmap -u \"<target_url>\" --dbs"
+    echo "  • Nikto     : nikto -h <target>"
+    echo "  • Dirb      : dirb <base_url>"
+    echo "  • GoBuster  : gobuster dir -u <url> -w <wordlist>"
+    echo "  • TShark    : tshark -i eth0 -c 10"
+    echo ""
+    echo "⚠️  Use these tools ethically and with authorization only!"
+    echo "────────────────────────────"
+    echo ""
 }
 
-# If this script is called directly (not sourced), you could make it do something,
-# but for this setup, it's intended to be sourced by the Python TUI to make functions available.
-# If called with an argument (function name), execute it.
-# This allows the Python script to call: bash /usr/local/bin/shell_functions.sh display_welcome
+launch_shell() {
+    clear
+    echo "🌀 Welcome to the Interactive Pentesting Shell 🌀"
+    echo "------------------------------------------------"
+    echo "Type 'exit' to return to the TUI menu."
+    echo ""
+    export PS1="\[\e[1;34m\][pentester@\h:\w]\$\[\e[0m\] "
+    bash --login
+}
+
+# --- Main Execution Logic ---
+# This part allows the script to be called with a function name as an argument
+# (e.g., 'bash /usr/local/bin/shell_functions.sh display_welcome')
+# which is how the Python TUI script invokes these functions.
 if [ -n "$1" ]; then
-    "$@"
+    # Check if the function name provided as the first argument exists
+    if declare -f "$1" > /dev/null; then
+        # Call the function with any subsequent arguments
+        "$@"
+    else
+        # Function not found, print an error to stderr
+        echo "Error: Function '$1' not found in shell_functions.sh" >&2
+        exit 127 # Standard exit code for command not found
+    fi
 fi
+
+# If the script is run without arguments, it does nothing by default.
+# You could add default behavior here if needed, but it's not required
+# for its use with the Python TUI.

@@ -71,28 +71,31 @@ RUN python3 -m pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir -r requirements.txt
 
 # ============================================
-# Copy Application Scripts
+# Copy Application Scripts & Configs
 # ============================================
 # Copy the shell script containing functions (if your Python TUI calls it)
-# This is the script your Python TUI will call for functions like display_welcome
 COPY entrypoint_functions.sh /usr/local/bin/shell_functions.sh
-# This is the main Python TUI application script
+# Copy the main Python TUI application script
 COPY tui_menu.py ${HOME}/tui_menu.py
+# ADDED: Copy the custom bashrc file to the user's home directory
+COPY custom_bashrc ${HOME}/.bashrc
 
-# Convert shell script to Unix format and make scripts executable
+# Convert shell scripts and bashrc to Unix format and make scripts executable
 RUN dos2unix /usr/local/bin/shell_functions.sh && \
     chmod +x /usr/local/bin/shell_functions.sh && \
-    chmod +x ${HOME}/tui_menu.py
+    chmod +x ${HOME}/tui_menu.py && \
+    dos2unix ${HOME}/.bashrc # ADDED: Run dos2unix on the copied bashrc
 
 # ============================================
-# Setup Report Directory
+# Setup Report Directory & Final Permissions
 # ============================================
 # Create directories and set permissions
 # Note: SCAN_OUTPUT_DIR is now correctly evaluated
 RUN mkdir -p "${SCAN_OUTPUT_DIR}"/logs "${SCAN_OUTPUT_DIR}"/screenshots "${SCAN_OUTPUT_DIR}"/vulnerabilities && \
     touch "${SCAN_OUTPUT_DIR}"/logs/exploit.log "${SCAN_OUTPUT_DIR}"/logs/recon.log "${SCAN_OUTPUT_DIR}"/logs/scan.log && \
     touch "${SCAN_OUTPUT_DIR}"/vulnerabilities/vulnerabilities.log && \
-    chown -R ${UNAME}:${UNAME} ${HOME}
+    # Ensure the user owns their entire home directory, including the new .bashrc
+    chown -R ${UNAME}:${UNAME} ${HOME} 
 
 # ============================================
 # Switch to Non-root User
@@ -104,6 +107,4 @@ USER ${UNAME}
 # CMD
 # ============================================
 # The Python TUI script is now the main command to run.
-# It will internally call functions from /usr/local/bin/shell_functions.sh if needed.
-# We remove the ENTRYPOINT [] line. CMD in exec form will now be the primary command.
 CMD ["python3", "tui_menu.py"]

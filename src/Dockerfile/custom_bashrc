@@ -1,0 +1,48 @@
+# ~/.bashrc - Custom for Pentesting Container
+
+# Set a colorful and informative prompt
+export PS1="\[\e[1;32m\][\u@\h:\w]\$\[\e[0m\] "
+
+# Show welcome banner once per shell start
+if [ -z "$BASHRC_WELCOME_SHOWN" ]; then
+    export BASHRC_WELCOME_SHOWN=1
+    clear
+    echo -e "\e[1;34m"
+    echo "   ____            _        _              "
+    echo "  |  _ \ ___  __ _| |_ __ _| | _____ _ __  "
+    echo "  | |_) / _ \/ _\` | __/ _\` | |/ / _ \ '__| "
+    echo "  |  __/  __/ (_| | || (_| |   <  __/ |    "
+    echo "  |_|   \___|\__,_|\__\__,_|_|\_\___|_|    "
+    echo -e "\e[0m"
+    echo "🛠️  Pentesting Container Bash Shell"
+    echo "📁 Reports saved in: ${SCAN_OUTPUT_DIR:-/home/pentester/reports}"
+    echo "💡 Type 'helpme' to see common tool commands"
+    echo ""
+fi
+
+# Aliases for convenience
+alias ll='ls -alF --color=auto'
+alias la='ls -A'
+alias l='ls -CF'
+alias grep='grep --color=auto'
+alias scanlogs='cd ${SCAN_OUTPUT_DIR:-/home/pentester/reports}'
+alias ports='ss -tuln'
+
+# Function for quick tool tips
+helpme() {
+    echo "📚 Common Tool Usage:"
+    echo "  🔍 Nmap:      nmap -sV <target>"
+    echo "  💉 SQLMap:    sqlmap -u \"<url>\" --dbs"
+    echo "  🌐 Nikto:     nikto -h <host>"
+    echo "  📂 Dirb:      dirb <base_url>"
+    echo "  📁 GoBuster:  gobuster dir -u <url> -w <wordlist>"
+    echo "  📡 TShark:    tshark -i eth0 -c 10"
+    echo ""
+}
+
+# If in interactive shell, add tool directory to PATH
+case $- in
+    *i*)
+        export PATH="$PATH:/opt/pentools"
+        ;;
+esac
